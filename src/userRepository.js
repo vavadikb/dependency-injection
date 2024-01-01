@@ -1,7 +1,12 @@
 class Repository {
 
-    constructor(data){
-        this.data = data
+    constructor() {
+        this.data = [
+            { id: 1, name: "Vadim", age: 20 },
+            { id: 2, name: "Vasya", age: 22 },
+            { id: 3, name: "Petya", age: 33 },
+            { id: 4, name: "Kolya", age: 25 },
+          ]
     }
 
     get(){

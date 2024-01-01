@@ -1,5 +1,5 @@
 
-class userController{
+class UserController{
 /**
  * @param {UserService} service
  */
@@ -52,4 +52,4 @@ class userController{
         }
     }
     
-module.exports = userController
+module.exports = UserController

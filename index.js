@@ -1,199 +1,94 @@
-class UserController{
-/**
- * @param {UserService} service
- */
-    constructor(service){
-        this.service = service
-    }
+const fs = require('fs');
+const path = require('path');
+const extractClass = require('./extractClassFunc.js');
+const sortObjects = require('./register.js')
+const createClassConstructor = require('./createClass.js')
 
-    async getUsers(){
-        try {
-            return await this.service.getUsers()
-        }catch (e){
-            console.log(e)
-            throw e
-        }
-    }
-
-    async getUserById(id){
-        try {
-            return await this.service.getUserById(id)
-        }catch (e){
-            console.log(e)
-            throw e
-        }
-    }
-
-    async postUser(user){
-        try {
-            await this.service.postUser(user)
-        }catch (e){
-            console.log(e)
-            throw e
-        }
-    }
-
-    async putUser(id, newUserData){
-        try{
-            await this.service.putUser(id,newUserData)
-        }catch(e){
-
-        }
-    }
-
-    async deleteUser(userId){
-        try {
-            await this.service.deleteUser(userId)
-        }catch (e){
-            console.log(e)
-            throw e
-        }
-    }
-}
-
-/**
- * @param {Repository} dbRepository
- */
-
-class UserService {
-    constructor(dbRepository){
-        this.repository = dbRepository
-    }
-
-    async getUsers(){
-        try{
-            return await this.repository.get()
-        }catch(e){
-            console.log(e, 'ERROR during getting users')
-            throw e
-        }
-    }
-
-    async getUserById(id){
-        try{
-            return await this.repository.getById(id)
-        }catch(e){
-            console.log(e, 'ERROR during getting user by id')
-            throw e
-        }
-    }
-
-    async postUser(user){
-        try{
-            return await this.repository.post(user)
-        }catch(e){
-            console.log(e, 'ERROR during post user')
-            throw e
-        }
-    }
-
-    async putUser(id, newUserData){
-        try{
-            return await this.repository.put(id,newUserData)
-        }catch(e){
-            console.log(e, 'ERROR during post user')
-            throw e
-        }
-    }
-
-    async deleteUser(userId){
-        try{
-            return await this.repository.delete(userId)
-        }catch(e){
-            console.log(e, "ERROR during delete user")
-        }
-    }
-}
-
-
-class Repository {
-    constructor(data){
-        this.data = data
-    }
-
-    get(){
-        return this.data
-    }
-    getById(id) {
-        console.log(this.data);
-        let item = this.data.find(item => item.id === id);
-        console.log(item)
-        return item.length ? item[0] : `Object with id ${id} not found`;
-    }
-
-    post(newObj){
-        return this.data.push({id:this.data[this.data.length - 1].id + 1 , ...newObj})
-    }
-
-    put(id, newObj){
-        try {
-            const index = this.data.findIndex(item => item.id === id);
-            try {
-                if(index){
-                    return this.data[index] = {id, ...newObj}
-                } else{
-                    throw new Error(`Object with id ${id} not found`)
-                }
-            }catch(e){
-                console.log(e)
-                throw e 
-            }
-        }catch(e){
-            console.log(e)
-            throw e 
-        }
-    }
-
-    delete(id){
-        try{
-            let item = this.data.find(item => item.id === id);
-            return item.length ? this.data = this.data.filter(item => item.id !== id) : `Object with id ${id} not found`;
-        }catch(e){
-            console.error(e)
-            throw e
-        }
-    }
-}
+const srcDirectoryPath = path.resolve(__dirname, 'src');
+const allClasses = [];
 
 class Container {
-    constructor(){
-        this.instances = new Map()
-    }
+  constructor() {
+    this.container = {};
+  }
 
-    register(key, instance){
-        this.instances.set(key,instance)
-    }
+  get() {
+    return this.container;
+  }
 
-    resolve(key) {
-        if (!this.instances.has(key)) {
-          throw new Error(`Dependency not registered: ${key}`);
+  register(className, instance) {
+    this.container[className] = instance;
+  }
+
+  resolve(className) {
+    if (this.container.hasOwnProperty(className)) {
+      return this.container[className];
+    } else {
+      throw new Error(`Dependency not found for class: ${className}`);
+    }
+  }
+}
+
+let container = new Container()
+
+
+    fs.readdir(srcDirectoryPath, (err, files) => {
+        if (err) {
+          console.error('Error reading directory:', err);
+          return;
         }
-    
-        return this.instances.get(key);
-      }
+      
+        files.forEach((file) => {
+          const filePath = path.join(srcDirectoryPath, file);
+      
+          try {
+          const fileContent = fs.readFileSync(filePath, 'utf8');
+          const regex = /class\s+(\w+)/g;
+          const matches = fileContent.match(regex);
+          let classNames
+      
+          if (matches) {
+              const result = matches.map(match => match.split(' ')[1]);
+              classNames = result
+              console.log(classNames);
+          }
+          const classes = extractClass(fileContent)
+          console.log(classes)
+          allClasses.push(classes)
+          } catch (error) {
+            console.error(`Error reading file ${filePath}:`, error);
+          }
+        });
+        let resultClasses = sortObjects(allClasses)
+        registerClasses(resultClasses, container)
+        testing(container) // testing functionality of classes 
+      });
+function registerClasses(classArray, container) {
+    const classMap = new Map();
+
+    let sortedClasses = sortObjects(classArray).flat();
+
+    sortedClasses.forEach(classInfo => {
+        const { className, classfileContent, paramType } = classInfo;
+
+        let instance;
+        if (paramType === null) {
+            instance = createClassConstructor(classfileContent, className);
+        } else {
+            const dependency = container.resolve(paramType);
+            instance = createClassConstructor(classfileContent, className, dependency);
+        }
+
+        container.register(className, instance);
+        classMap.set(className, instance);
+    });
+
+    return container;
 }
 
-class App {
-    constructor(){
-        this.container = new Container()
-        this.registerDependencies()
-    }
-
-    registerDependencies(){
-        this.container.register('database', new Repository([ {id: 1, name:'Vadim', age: 20}, {id: 2,name:'Vasya', age: 22},  {id: 3,name:'Petya', age: 33},  {id: 4,name:'Kolya', age: 25}]));
-        this.container.register('UserService', new UserService(this.container.resolve('database')));
-        this.container.register('UserController', new UserController(this.container.resolve('UserService')))
-    }
-
-    async start(){
-        const userControllerClass = this.container.resolve('UserController');
-        await userControllerClass.postUser({name:'VADIK', age: 22})
-        await userControllerClass.putUser(2, {name:'', age:0})
-        let result = await userControllerClass.getUsers()
-    
-        console.log(result)
-    }
+async function testing(container){
+  const userServiceInstance = container.resolve("UserService");
+  const userControllerInstance = container.resolve("UserController");
+  const repositoryInstance = container.resolve("Repository");
+  console.log(await userControllerInstance.getUsers())
 }
-
-const app = new App()
-app.start()
