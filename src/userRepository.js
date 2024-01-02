@@ -13,10 +13,8 @@ class Repository {
         return this.data
     }
     getById(id) {
-        console.log(this.data);
         let item = this.data.find(item => item.id === id);
-        console.log(item)
-        return item.length ? item[0] : `Object with id ${id} not found`;
+        return item ? item : `Object with id ${id} not found`;
     }
 
     post(newObj){
