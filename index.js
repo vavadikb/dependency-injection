@@ -1,8 +1,8 @@
 const fs = require('fs');
 const path = require('path');
-const extractClass = require('./extractClassFunc.js');
-const sortObjects = require('./register.js')
-const createClassConstructor = require('./createClass.js')
+const extractClass = require('./functions/extractClass.js');
+const sortObjects = require('./functions/sort.js')
+const createClassConstructor = require('./functions/createClass.js')
 
 const srcDirectoryPath = path.resolve(__dirname, 'src');
 const allClasses = [];
@@ -50,19 +50,20 @@ let container = new Container()
           if (matches) {
               const result = matches.map(match => match.split(' ')[1]);
               classNames = result
-              console.log(classNames);
           }
           const classes = extractClass(fileContent)
-          console.log(classes)
+          // console.log(classes) // shows all classes in ./src 
           allClasses.push(classes)
           } catch (error) {
             console.error(`Error reading file ${filePath}:`, error);
           }
         });
         let resultClasses = sortObjects(allClasses)
+        // console.log(resultClasses, 'sorted classes') // shows sorted classes, ready to register in container
         registerClasses(resultClasses, container)
-        testing(container) // testing functionality of classes 
+        testing(container) // runs instences in container
       });
+
 function registerClasses(classArray, container) {
     const classMap = new Map();
 
